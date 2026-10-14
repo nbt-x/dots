@@ -1,0 +1,41 @@
+[Unit]
+Description=kanshi dynamic display configuration
+Documentation=man:kanshi(1) man:kanshi(5)
+
+# graphical-session.target is never activated here -- Hyprland is started
+# straight from the TTY rather than through uwsm, so nothing pulls that target
+# up. hyprland.lua therefore starts this unit explicitly, after Hyprland has
+# imported WAYLAND_DISPLAY into the systemd user manager. The binding below is
+# declared anyway so `systemctl --user enable` does the right thing if the
+# session ever moves to uwsm.
+PartOf=graphical-session.target
+After=graphical-session.target
+
+# Without this, starting before the compositor has published its socket burns
+# all five restarts in a couple of seconds and the unit gives up for good.
+# A skipped start is recoverable; a rate-limited one needs reset-failed.
+ConditionEnvironment=WAYLAND_DISPLAY
+
+# A dock teardown can kill kanshi more than once as heads disappear under it
+# (see the config's header). The default budget of 5 is close enough to that to
+# risk latching the unit into a permanent failure, which would leave the panel
+# disabled and the laptop with no working screen at all.
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/kanshi
+ExecReload=/usr/bin/kanshictl reload
+Restart=on-failure
+RestartSec=2
+
+# kanshi's `exec` directives spawn ashell, and setsid does not move a process
+# out of the cgroup it was forked in -- so the bar ends up inside this unit and
+# the default control-group kill would take it down with kanshi. Reap only the
+# main process: ashell then survives a kanshi restart, and the profile that gets
+# applied on the way back up restarts it regardless.
+KillMode=process
+
+[Install]
+WantedBy=graphical-session.target

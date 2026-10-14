@@ -1,0 +1,41 @@
+;; GACS home row mods for the built-in ThinkPad keyboard.
+;; Follows https://precondition.github.io/home-row-mods#using-home-row-mods-with-kmonad
+;;
+;;   left:  a=GUI  s=Alt  d=Ctrl  f=Shift
+;;   right: j=Shift k=Ctrl l=Alt  ;=GUI
+
+(defcfg
+  input  (device-file "/dev/input/by-path/platform-i8042-serio-0-event-kbd")
+  output (uinput-sink "KMonad ThinkPad")
+
+  ;; every key not listed in defsrc passes through untouched
+  fallthrough true
+
+  ;; no (cmd-button ...) in this config, so keep shell-out disabled
+  allow-cmd false
+)
+
+(defsrc
+  a    s    d    f    g    h    j    k    l    ;
+)
+
+(defalias
+  ;; 200ms as the guide recommends, mirroring QMK's default TAPPING_TERM.
+  ;; Shift (f/j) runs at 150ms: it's the most-used mod, so it wants a faster hold.
+  ;; tap-hold-next-release is the variant that survives fast rolls: the hold
+  ;; only fires if the *home row key itself* is released last.
+  met_a (tap-hold-next-release 200 a lmet)
+  alt_s (tap-hold-next-release 200 s lalt)
+  ctl_d (tap-hold-next-release 200 d lctl)
+  sft_f (tap-hold-next-release 150 f lsft)
+
+  sft_j (tap-hold-next-release 150 j rsft)
+  ctl_k (tap-hold-next-release 200 k rctl)
+  ;; lalt, not ralt: ralt is AltGr on the gb/extd layout used here
+  alt_l (tap-hold-next-release 200 l lalt)
+  met_; (tap-hold-next-release 200 ; rmet)
+)
+
+(deflayer homerowmods
+  @met_a @alt_s @ctl_d @sft_f g    h    @sft_j @ctl_k @alt_l @met_;
+)

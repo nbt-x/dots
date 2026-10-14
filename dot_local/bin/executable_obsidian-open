@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Open a markdown file in whichever Obsidian vault contains it.
+#
+# Obsidian's URI handler resolves `path=` against the registered vaults itself,
+# so all this has to do is decide whether the file lives in a vault at all. A
+# vault root is any ancestor directory holding a `.obsidian` folder, which also
+# catches vaults that have never been opened on this machine.
+#
+# Files outside every vault fall through to $FALLBACK rather than handing
+# Obsidian a path it will refuse to open.
+
+set -euo pipefail
+
+FALLBACK=${OBSIDIAN_OPEN_FALLBACK:-kate}
+
+# Percent-encode everything outside the RFC 3986 unreserved set.
+urlencode() {
+    local str=$1 i c out=
+    for ((i = 0; i < ${#str}; i++)); do
+        c=${str:i:1}
+        case $c in
+            [a-zA-Z0-9.~_-]) out+=$c ;;
+            *) out+=$(printf '%%%02X' "'$c") ;;
+        esac
+    done
+    printf '%s' "$out"
+}
+
+# file:///foo%20bar -> /foo bar
+from_uri() {
+    local u=$1
+    [[ $u == file://* ]] || { printf '%s' "$u"; return; }
+    u=${u#file://}
+    u=${u%%\?*}
+    printf '%b' "${u//%/\\x}"
+}
+
+# Walk up from a directory looking for the .obsidian vault marker.
+vault_root() {
+    local dir=$1
+    while [[ $dir != / && -n $dir ]]; do
+        [[ -d $dir/.obsidian ]] && { printf '%s' "$dir"; return 0; }
+        dir=$(dirname "$dir")
+    done
+    return 1
+}
+
+(($#)) || { echo "usage: ${0##*/} FILE..." >&2; exit 2; }
+
+for arg in "$@"; do
+    file=$(from_uri "$arg")
+    # Obsidian needs an absolute path; realpath also normalises any ../ segments.
+    file=$(realpath -m -- "$file")
+
+    if vault=$(vault_root "$(dirname -- "$file")"); then
+        exec_uri="obsidian://open?path=$(urlencode "$file")"
+        echo "opening in vault '${vault##*/}': $file" >&2
+        setsid obsidian "$exec_uri" >/dev/null 2>&1 &
+    else
+        echo "not inside an Obsidian vault, using $FALLBACK: $file" >&2
+        setsid "$FALLBACK" -- "$file" >/dev/null 2>&1 &
+    fi
+done
+
+wait 2>/dev/null || true

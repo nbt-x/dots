@@ -1,0 +1,17 @@
+[Unit]
+Description=Restart kanshi when the machine resumes from suspend or hibernate
+Documentation=man:kanshi(1)
+
+# Deliberately not tied to the graphical session: this only talks to the system
+# bus and systemctl, never to Wayland, so it can run for the whole user session
+# and be enabled the ordinary way. That also means it is already listening if a
+# resume happens to land before the compositor is back up.
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/kanshi-resume-watch
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

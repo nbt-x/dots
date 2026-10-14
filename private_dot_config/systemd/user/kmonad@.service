@@ -1,0 +1,18 @@
+[Unit]
+Description=KMonad home row mods (%i, built-in ThinkPad keyboard)
+# Only one instance may hold the keyboard grab at a time; the toggle in
+# hyprland.lua stops the other instance before starting this one.
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/kmonad %h/.config/kmonad/%i.kbd
+Restart=on-failure
+RestartSec=3
+# KMonad grabs the keyboard exclusively; make sure it lets go on stop.
+KillSignal=SIGTERM
+TimeoutStopSec=5
+
+[Install]
+WantedBy=default.target

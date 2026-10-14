@@ -1,0 +1,49 @@
+#!/bin/sh
+# Restart the layer-shell clients after a monitor layout change.
+#
+# Neither survives its outputs changing, in different ways:
+#
+#   ashell 0.7.0   dies outright when one of its outputs goes away
+#   hyprpaper      stays alive but silently drops every wallpaper assignment --
+#                  `hyprctl hyprpaper listactive` comes back empty and whatever
+#                  screen just appeared is left with a blank background
+#
+# so kanshi restarts both whenever it changes the layout. Restarting hyprpaper
+# rather than poking its IPC is deliberate: its config says `monitor =` (all
+# monitors), so a fresh start re-reads that and covers whatever is connected now,
+# without this script needing to know the wallpaper path.
+#
+# Profile switches often arrive back to back -- a profile that frees the panel's
+# CRTC is superseded milliseconds later by the profile for the layout that CRTC
+# made possible -- and kanshi runs exec asynchronously without preserving order,
+# so those restarts overlap. The lock serializes them and the wait makes sure the
+# old process is really gone before the next one starts, so however many restarts
+# pile up the end state is always exactly one of each. That is what lets every
+# profile call this unconditionally instead of reasoning about which ones are
+# transient.
+
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/restart-desktop-shell.lock"
+flock 9
+
+restart() {
+    pkill -x "$1" 2>/dev/null
+
+    # pkill returns as soon as the signal is sent, not once the process is
+    # reaped; starting the replacement too early gives two of them until the
+    # loser exits.
+    i=0
+    while pgrep -x "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        if [ "$i" -gt 50 ]; then
+            pkill -KILL -x "$1" 2>/dev/null
+            break
+        fi
+        sleep 0.1
+    done
+
+    # 9>&- so the child does not inherit the lock fd and hold it forever.
+    setsid -f "$1" >/dev/null 2>&1 9>&-
+}
+
+restart ashell
+restart hyprpaper

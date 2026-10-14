@@ -1,0 +1,42 @@
+#!/bin/sh
+# Restart kanshi once the machine resumes.
+#
+# kanshi survives suspend and hibernate as a process, but its Wayland connection
+# comes back deaf: the compositor re-probes the outputs on resume and kanshi
+# never sees the resulting head changes. It just sits there still holding
+# whatever profile matched before the machine went down, with no log output at
+# all. Docking while hibernated is the clearest case -- you wake to Hyprland's
+# catch-all layout, a CRTC handed to the laptop panel instead of a monitor, and
+# kanshi running and silent. Restarting it makes it re-enumerate, and a fresh
+# instance then tracks later changes normally again.
+#
+# systemd 261 has no user-level sleep.target (checked: sleep/suspend/hibernate
+# targets are all not-found in the user manager), so there is nothing to hang a
+# WantedBy= off. logind's PrepareForSleep broadcast is the user-level equivalent:
+# true on the way down, false once resumed. gdbus subscribes to it as an ordinary
+# client; dbus-monitor falls back to eavesdropping, which current dbus policy
+# refuses outright.
+
+gdbus monitor --system \
+    --dest org.freedesktop.login1 \
+    --object-path /org/freedesktop/login1 |
+while read -r line; do
+    case "$line" in
+    *PrepareForSleep*false*)
+        # Outputs are still settling immediately after resume, and a restart
+        # landing mid-probe only matches a transient profile. kanshi follows
+        # later changes fine once running, so this just has to clear the churn.
+        sleep 2
+
+        # reset-failed first: a messy dock teardown can exhaust the unit's
+        # restart budget and leave it failed, and that is exactly the state
+        # where being stranded on the wrong layout hurts most. Plain restart
+        # rather than try-restart for the same reason -- it recovers a kanshi
+        # that is not running at all. Starting one outside a graphical session
+        # is harmless, since the unit's ConditionEnvironment=WAYLAND_DISPLAY
+        # skips it.
+        systemctl --user reset-failed kanshi.service 2>/dev/null
+        systemctl --user restart kanshi.service
+        ;;
+    esac
+done

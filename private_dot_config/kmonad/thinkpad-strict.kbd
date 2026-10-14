@@ -1,0 +1,44 @@
+;; Strict variant of thinkpad.kbd: same GACS home row mods, but the physical
+;; modifier keys are dead, so there is no way to cheat back to the old habit.
+;;
+;; !! Timings are duplicated from thinkpad.kbd — KMonad 0.4.5 has no include
+;; !! mechanism. If you retune a tap-hold value, change it in BOTH files.
+
+(defcfg
+  input  (device-file "/dev/input/by-path/platform-i8042-serio-0-event-kbd")
+  output (uinput-sink "KMonad ThinkPad")
+
+  fallthrough true
+  allow-cmd false
+)
+
+(defsrc
+  lsft lctl lmet lalt rctl rsft bspc
+  a    s    d    f    g    h    j    k    l    ;
+)
+
+(defalias
+  ;; 200ms as the guide recommends, mirroring QMK's default TAPPING_TERM.
+  ;; Shift (f/j) runs at 150ms: it's the most-used mod, so it wants a faster hold.
+  ;; tap-hold-next-release is the variant that survives fast rolls: the hold
+  ;; only fires if the *home row key itself* is released last.
+  met_a (tap-hold-next-release 200 a lmet)
+  alt_s (tap-hold-next-release 200 s lalt)
+  ctl_d (tap-hold-next-release 200 d lctl)
+  sft_f (tap-hold-next-release 150 f lsft)
+
+  sft_j (tap-hold-next-release 150 j rsft)
+  ctl_k (tap-hold-next-release 200 k rctl)
+  ;; lalt, not ralt: ralt is AltGr on the gb/extd layout used here
+  alt_l (tap-hold-next-release 200 l lalt)
+  met_; (tap-hold-next-release 200 ; rmet)
+)
+
+(deflayer strict
+  ;; XX = blocked. ralt is deliberately absent from defsrc and stays live:
+  ;; on gb/extd it is AltGr, a layout key rather than a shortcut modifier.
+  ;; rsft is repurposed as Backspace, and the real Backspace is blocked in
+  ;; turn, so the only way to delete is the new key.
+  XX   XX   XX   XX   XX   bspc XX
+  @met_a @alt_s @ctl_d @sft_f g    h    @sft_j @ctl_k @alt_l @met_;
+)

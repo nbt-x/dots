@@ -1,0 +1,8 @@
+@theme "catppuccin-default.rasi"
+window {
+    border-color: #cba6f7cc;
+    border-radius: 3px;
+}
+element selected{
+    border-radius: 3px;
+}

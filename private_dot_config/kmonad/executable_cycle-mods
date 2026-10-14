@@ -1,0 +1,31 @@
+#!/bin/sh
+# Cycle the keyboard between three modifier modes:
+#
+#   NORMAL  kmonad@thinkpad         home row mods + physical mods
+#   STRICT  kmonad@thinkpad-strict  home row mods only, physical mods blocked
+#   OFF     (nothing running)       plain keyboard, physical mods only
+#
+# Safety property: every mode leaves at least one working set of modifiers, so
+# the cycle key itself is always reachable. From STRICT that means using the
+# home row (a+f for SUPER+SHIFT); one press lands on OFF, which restores the
+# physical mods unconditionally.
+#
+# Only kmonad@thinkpad is enabled, never the strict instance, so a reboot or
+# fresh login always comes back up in NORMAL.
+
+notify() { notify-send -t 2000 "Keyboard mods" "$1"; }
+active() { systemctl --user is-active -q "$1"; }
+
+if active kmonad@thinkpad; then
+    systemctl --user stop kmonad@thinkpad
+    systemctl --user start kmonad@thinkpad-strict
+    notify "STRICT — home row only"
+elif active kmonad@thinkpad-strict; then
+    # Stop only; never hand over to another instance, so this step can't fail
+    # into a state with no modifiers at all.
+    systemctl --user stop kmonad@thinkpad-strict
+    notify "OFF — plain keyboard"
+else
+    systemctl --user start kmonad@thinkpad
+    notify "NORMAL — home row + physical"
+fi
