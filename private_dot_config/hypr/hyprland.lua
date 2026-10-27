@@ -86,6 +86,39 @@ hl.config({
         allow_tearing = false,
         layout = "dwindle",
     },
+    
+    group = {
+        -- Border around the group (separate from general.col.*)
+        col = {
+            border_active          = mauve,
+            border_inactive        = overlay0,
+            border_locked_active   = "rgb(fab387)",  -- peach: locked groups stand out
+            border_locked_inactive = overlay0,
+        },
+
+        groupbar = {
+            enabled       = true,
+            render_titles = true,           -- false = just thin coloured bars
+            font_family   = "JetBrainsMono Nerd Font",             -- empty = misc.font_family
+            font_size     = 14,
+            font_weight_active   = "bold",
+            font_weight_inactive = "normal",
+            text_color    = "rgb(cdd6f4)",  -- catppuccin text
+
+            height           = 16,          -- height of the title area
+            indicator_height = 0,           -- coloured line under each tab
+            gradients        = true,       -- true = filled tab backgrounds in col.*
+            gaps_in          = 0,
+	    stacked          = false,       -- true = tabs stacked vertically
+
+            col = {
+                active          = mauve,
+                inactive        = overlay0,
+                locked_active   = "rgb(fab387)",
+                locked_inactive = overlay0,
+            },
+        },
+    },
 
     decoration = {
         rounding = 0,
@@ -177,7 +210,6 @@ hl.on("hyprland.start", function()
     -- command string; if the Lua exec parser doesn't read it, use a per-app options table.
     hl.exec_cmd("[workspace special:TTY silent] kitty")
     hl.exec_cmd("[workspace special:VAR silent] keepassxc")
-    hl.exec_cmd("[workspace special:VAR silent] proton-mail --enable-features=UseOzonePlatform --ozone-platform=wayland")
     hl.exec_cmd('[workspace special:VAR silent] signal-desktop --password-store="kwallet6"')
 
     hl.exec_cmd("clipse -listen") -- clipboard listener
@@ -214,16 +246,22 @@ hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
 
 -- Swap windows
-hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.window.swap({ direction = "left" }),  { description = "swap window left" })  -- ⚠ VERIFY (swapwindow)
-hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.swap({ direction = "right" }), { description = "swap window right" }) -- ⚠ VERIFY
-hl.bind(mainMod .. " + SHIFT + up",    hl.dsp.window.swap({ direction = "up" }),    { description = "swap window up" })    -- ⚠ VERIFY
-hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.swap({ direction = "down" }),  { description = "swap window down" })  -- ⚠ VERIFY
+local dirs = { left = "l", right = "r", up = "u", down = "d" }
+for dir, m in pairs(dirs) do
+    hl.bind(mainMod .. " + SHIFT + " .. dir,        hl.dsp.window.swap({ direction = dir }))
+    hl.bind(mainMod .. " + CTRL + " .. dir,         hl.dsp.workspace.move({ monitor = m }))  -- workspace -> monitor
+    hl.bind(mainMod .. " + CTRL + SHIFT + " .. dir, hl.dsp.window.move({ monitor = m }))     -- window -> monitor
+    hl.bind(mainMod .. " + ALT + " .. dir,          hl.dsp.window.move({ direction = dir, group_aware = true })) -- into/out of group
+end
 
--- Switch workspaces (Y U I O P -> 1..5, 1..5 -> 6..10)
-local wsKeys = { Y = 1, U = 2, I = 3, O = 4, P = 5, ["1"] = 6, ["2"] = 7, ["3"] = 8, ["4"] = 9, ["5"] = 10 }
-for key, ws in pairs(wsKeys) do
-    hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = ws }))
-    hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = ws }))
+hl.bind(mainMod .. " + G",           hl.dsp.group.toggle())
+hl.bind(mainMod .. " + Tab",         hl.dsp.group.next())
+hl.bind(mainMod .. " + SHIFT + Tab", hl.dsp.group.prev())
+
+-- Switch workspaces --
+for ws = 1, 9 do
+    hl.bind(mainMod .. " + " .. ws, hl.dsp.focus({ workspace = ws }))
+    hl.bind(mainMod .. " + SHIFT + " .. ws, hl.dsp.window.move({ workspace = ws }))
 end
 
 -- Special workspaces
