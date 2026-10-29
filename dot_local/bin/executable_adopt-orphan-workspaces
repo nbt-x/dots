@@ -1,0 +1,16 @@
+#!/bin/sh
+# Move workspaces that no monitor owns onto the focused monitor.
+#
+# Undocking from `desk_panel_starved` drops all three dock heads in one burst
+# while the panel is still absent, so for a moment Hyprland has no monitor at
+# all. The workspaces on the dock screens lose their monitor, and when eDP-1
+# comes back a moment later Hyprland 0.56 does not adopt them -- they sit in
+# `hyprctl workspaces` as "on monitor ?", windows intact but unreachable.
+#
+# Only regular workspaces (positive IDs) are moved; the special ones are
+# persistent and re-home themselves.
+
+hyprctl workspaces | awk '/^workspace ID [0-9]+ .* on monitor \?:$/ { print $3 }' |
+while read -r id; do
+    hyprctl dispatch "hl.dsp.workspace.move({ workspace = $id, monitor = \"current\" })" >/dev/null
+done

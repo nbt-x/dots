@@ -32,13 +32,25 @@
   ;; lalt, not ralt: ralt is AltGr on the gb/extd layout used here
   alt_l (tap-hold-next-release 200 l lalt)
   met_; (tap-hold-next-release 200 ; rmet)
+
+  ;; Held lsft switches to the nav layer for as long as it is down.
+  nav   (layer-toggle nav)
 )
 
 (deflayer strict
   ;; XX = blocked. ralt is deliberately absent from defsrc and stays live:
   ;; on gb/extd it is AltGr, a layout key rather than a shortcut modifier.
   ;; rsft is repurposed as Backspace, and the real Backspace is blocked in
-  ;; turn, so the only way to delete is the new key.
-  XX   XX   XX   XX   XX   bspc XX
+  ;; turn, so the only way to delete is the new key. lsft is no longer a
+  ;; modifier but the hold key for the nav layer below.
+  @nav XX   XX   XX   XX   bspc XX
   @met_a @alt_s @ctl_d @sft_f g    h    @sft_j @ctl_k @alt_l @met_;
+)
+
+(deflayer nav
+  ;; Active while lsft is held: hjkl are arrows, asdf are the same GACS mods
+  ;; as on the home row but held immediately -- nothing to tap on this layer,
+  ;; so there is no reason to pay the tap-hold delay before e.g. Ctrl+Left.
+  _    _    _    _    _    _    _
+  lmet lalt lctl lsft _    left down up   rght _
 )

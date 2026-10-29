@@ -46,4 +46,9 @@ restart() {
 }
 
 restart ashell
-restart hyprpaper
+
+# hyprpaper is a systemd user service; restarting it through systemctl keeps it
+# under the unit (and its Restart= policy) instead of spawning a stray copy in
+# kanshi's cgroup. systemctl restart blocks until the old process is stopped, so
+# the lock still serializes overlapping restarts.
+systemctl --user restart hyprpaper.service 9>&-

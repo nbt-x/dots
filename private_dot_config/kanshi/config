@@ -1,0 +1,187 @@
+# The iGPU (Whiskey Lake UHD 620) has only 3 CRTCs, so at most 3 displays can be
+# driven at once. All three externals hang off the Thunderbolt dock, and the lid
+# panel stays electrically connected even in clamshell (its EDID is readable with
+# the lid shut), so docked there are always 4 connected heads and one loses.
+#
+# Which one loses is not stable -- it is decided by probe order at boot and again
+# on every resume. That matters because a head is visible to kanshi in two very
+# different ways:
+#
+#   * disabled by kanshi -- still advertised, still addressable, `disabled: true`
+#   * starved of a CRTC  -- not advertised at all, simply absent
+#
+# So the docked layout has two spellings depending on which way the panel went,
+# and both need a profile. A profile matches only when every connected head is
+# accounted for and every output it names is present, so a profile that names the
+# panel cannot match while the panel is starved -- that is exactly the hole that
+# used to leave the whole config unapplied, with Hyprland's catch-all `monitor`
+# rule silently configuring everything instead.
+#
+# kanshi can also die outright during a dock teardown: it starts applying a
+# profile, another head disappears mid-flight, it touches the destroyed object
+# and Wayland kills the client with `invalid object`. The unit restarts it, so
+# what matters is that the restarted instance finds a profile for whatever it
+# wakes up to -- hence the broad fallback at the bottom of this file.
+#
+# Verified identifiers (kanshi matches make/model/serial, and per kanshi(5) a
+# missing field must be spelled "Unknown" -- the panel's EDID carries no serial,
+# so "Chimei Innolux Corporation 0x14E4" alone does NOT match, though it is what
+# Hyprland reports as the monitor description). "eDP-1" also matches and is
+# stable for a built-in panel, if the EDID form ever stops matching.
+
+output "AOC 24G2W1G4 ATNLB1A010159" {
+    mode 1920x1080@144.00
+    position 0,0
+    scale 1
+    alias $MAIN
+}
+
+output "Samsung Electric Company S24E650 H4ZJB00979" {
+    mode 1920x1080@60.00
+    position -1920,0
+    scale 1
+    transform 180
+    alias $LEFT
+}
+
+output "Samsung Electric Company S24E650 0x5A5A5551" {
+    mode 1920x1080@60.00
+    position 1920,-450
+    scale 1
+    transform 90
+    alias $VERTICAL
+}
+
+output "Chimei Innolux Corporation 0x14E4 Unknown" {
+    mode 1920x1080
+    position 0,0
+    # Must divide 1920x1080 into whole logical pixels or Hyprland rejects it and
+    # silently falls back to 1. 0.95 gives 2021.05 and does exactly that (and is
+    # smaller than 1 anyway); 1.25 gives a clean 1536x864.
+    scale 1.25
+    alias $KARLHEINZ
+}
+
+# Every profile restarts the layer-shell clients (ashell and hyprpaper), neither
+# of which survives its outputs changing. Every profile that enables the panel
+# also runs adopt-orphan-workspaces: an undock can leave Hyprland with no
+# monitor for an instant, and the workspaces from the dock screens are then not
+# re-homed onto the panel on their own (see the script). The helper takes a lock and waits for
+# the old process to die, so the overlapping restarts you get when one profile
+# supersedes another milliseconds later still settle on exactly one of each.
+
+# --- Docked, all three externals ------------------------------------------
+# Two spellings of the same layout. Only one can match at a time: either the
+# panel is still a head (so it must be explicitly disabled to free its CRTC for
+# $MAIN) or it already lost the CRTC race and is absent.
+
+profile desk {
+    output $KARLHEINZ disable
+    output $MAIN enable
+    output $LEFT enable
+    output $VERTICAL enable
+    exec $HOME/.local/bin/restart-desktop-shell
+}
+
+profile desk_panel_starved {
+    output $MAIN enable
+    output $LEFT enable
+    output $VERTICAL enable
+    exec $HOME/.local/bin/restart-desktop-shell
+}
+
+# --- Docked, one external missing -----------------------------------------
+# Each of these covers two indistinguishable situations: the missing screen is
+# unplugged, or it is plugged but lost the CRTC race. Both look identical to
+# kanshi, and disabling the panel is the right move either way -- it frees a
+# CRTC, so if the screen was merely starved it appears and `desk` takes over,
+# and if it really is unplugged this stays as a correct standalone layout.
+# The positions are overridden where the desk coordinates would leave a gap the
+# cursor cannot cross.
+
+profile desktop {
+    output $KARLHEINZ disable
+    output $MAIN enable
+    output $LEFT enable
+    exec $HOME/.local/bin/restart-desktop-shell
+}
+
+profile desk_no_main {
+    output $KARLHEINZ disable
+    output $LEFT enable position 0,0
+    output $VERTICAL enable
+    exec $HOME/.local/bin/restart-desktop-shell
+}
+
+profile desk_no_left {
+    output $KARLHEINZ disable
+    output $MAIN enable
+    output $VERTICAL enable
+    exec $HOME/.local/bin/restart-desktop-shell
+}
+
+# --- Undocked --------------------------------------------------------------
+
+profile karlheinz {
+    output $KARLHEINZ enable
+    exec $HOME/.local/bin/restart-desktop-shell
+    exec $HOME/.local/bin/adopt-orphan-workspaces
+}
+
+# --- Docked, only one external ---------------------------------------------
+# These are mostly transient: the dock's screens are MST connectors and they
+# appear and disappear one at a time, so a dock or undock walks through these
+# sets on the way to `desk` or `karlheinz`. Leaving them uncovered is what broke
+# the undock on 2026-09-05 -- teardown stalled on one of them, nothing matched,
+# and kanshi sat idle with the panel still disabled from `desk`, so the laptop
+# screen stayed black.
+#
+# The panel is enabled here rather than disabled: two heads always fit in three
+# CRTCs, so there is nothing to free, and if the transition stalls here this is
+# the state the user is left looking at. The external goes to 0,0 with the panel
+# directly below it so the arrangement makes sense on its own.
+
+profile karlheinz_main {
+    output $MAIN enable position 0,0
+    output $KARLHEINZ enable position 0,1080
+    exec $HOME/.local/bin/restart-desktop-shell
+    exec $HOME/.local/bin/adopt-orphan-workspaces
+}
+
+profile karlheinz_left {
+    output $LEFT enable position 0,0
+    output $KARLHEINZ enable position 0,1080
+    exec $HOME/.local/bin/restart-desktop-shell
+    exec $HOME/.local/bin/adopt-orphan-workspaces
+}
+
+profile karlheinz_vertical {
+    output $VERTICAL enable position 0,0
+    output $KARLHEINZ enable position 0,1920
+    exec $HOME/.local/bin/restart-desktop-shell
+    exec $HOME/.local/bin/adopt-orphan-workspaces
+}
+
+# --- Last resort ------------------------------------------------------------
+# Matches the panel plus any number of other heads, so it catches every set the
+# profiles above do not. Its only job is to make sure the panel is never left
+# disabled with nothing to replace it: `desk` turns the panel off, and if the
+# layout then changes into something unanticipated, without this kanshi would
+# apply nothing and leave a machine whose only remaining screen is switched off.
+#
+# ORDER MATTERS HERE, unlike everywhere else in this file. Every other profile
+# describes an exact set, so at most one of them can match and their order is
+# only documentation. This one deliberately matches broadly -- `...output *`
+# matches any number of heads including none, so it covers `karlheinz` too --
+# and kanshi applies the first profile that matches. It must stay last, and
+# `karlheinz` must stay above it.
+#
+# No positions: where the other screens ended up is unknown, so the panel takes
+# its default 0,0 and may overlap one of them. Overlapping is survivable; a
+# machine with every screen off is not.
+profile fallback {
+    output $KARLHEINZ enable
+    ...output *
+    exec $HOME/.local/bin/restart-desktop-shell
+    exec $HOME/.local/bin/adopt-orphan-workspaces
+}

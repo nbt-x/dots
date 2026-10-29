@@ -9,10 +9,6 @@ function fish_greeting
     fastfetch -c paleofetch
 end
 
-if test -f ~/dotfiles/.aliases
-    source ~/dotfiles/.aliases
-end
-
 if test -f ~/.aliases
     source ~/.aliases
 end

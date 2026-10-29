@@ -1,0 +1,4 @@
+name = GoogleDot-Black-hyprcursor
+description = Black cursor theme inspired on Google (hyprcursor, built from upstream SVGs)
+version = 2.0.0
+cursors_directory = hyprcursors

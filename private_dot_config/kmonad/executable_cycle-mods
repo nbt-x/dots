@@ -10,8 +10,8 @@
 # home row (a+f for SUPER+SHIFT); one press lands on OFF, which restores the
 # physical mods unconditionally.
 #
-# Only kmonad@thinkpad is enabled, never the strict instance, so a reboot or
-# fresh login always comes back up in NORMAL.
+# Neither instance is enabled -- they are mutually exclusive and only ever
+# started from here -- so a reboot or fresh login always comes back up in OFF.
 
 notify() { notify-send -t 2000 "Keyboard mods" "$1"; }
 active() { systemctl --user is-active -q "$1"; }

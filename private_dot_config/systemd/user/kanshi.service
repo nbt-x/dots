@@ -2,12 +2,10 @@
 Description=kanshi dynamic display configuration
 Documentation=man:kanshi(1) man:kanshi(5)
 
-# graphical-session.target is never activated here -- Hyprland is started
-# straight from the TTY rather than through uwsm, so nothing pulls that target
-# up. hyprland.lua therefore starts this unit explicitly, after Hyprland has
-# imported WAYLAND_DISPLAY into the systemd user manager. The binding below is
-# declared anyway so `systemctl --user enable` does the right thing if the
-# session ever moves to uwsm.
+# The session runs under uwsm, which activates graphical-session.target once
+# Hyprland is up and has exported WAYLAND_DISPLAY to the systemd user manager.
+# Enabled into that target (see run_onchange_after_enable-user-units.sh in the
+# chezmoi source), this starts and stops with the compositor.
 PartOf=graphical-session.target
 After=graphical-session.target
 

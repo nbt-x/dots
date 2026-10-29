@@ -6,6 +6,11 @@ right = [ "WindowTitle" ]
 [window_title]
 truncate_title_after_length = 60
 
+[settings]
+remove_idle_btn = true
+remove_airplane_btn = true
+remove_charge_limit_btn = true
+
 [workspaces]
 visibility_mode = "MonitorSpecific"
 
