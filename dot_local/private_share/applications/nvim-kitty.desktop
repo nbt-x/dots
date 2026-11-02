@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Neovim (kitty)
+Exec=kitty -o confirm_os_window_close=0 -e nvim %F
+MimeType=text/plain;
+Terminal=false
+NoDisplay=true
