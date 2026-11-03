@@ -1,0 +1,10 @@
+# argument shorthands
+alias ls='ls --color=auto'
+alias ll='ls -la'
+
+# replacements
+alias cd='z'
+
+# shorthands
+alias lz='lazygit'
+alias wh='wormhole'
