@@ -52,7 +52,7 @@ output "Samsung Electric Company S24E650 0x5A5A5551" {
     alias $VERTICAL
 }
 
-output "Chimei Innolux Corporation 0x14E4 Unknown" {
+output "eDP-1" {
     mode 1920x1080
     position 0,0
     # Must divide 1920x1080 into whole logical pixels or Hyprland rejects it and
